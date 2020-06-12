@@ -1,0 +1,178 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="~/js/jquery-3.3.1.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            for (var i = 1; i < 61; i++) {
+                $("#cb_minute").append('<option value=' + i + '>' + i + '</option>');
+
+            }
+            $("#cb_minute").val(5);
+
+            $("#btn_get").click(function () {
+                $('#txt_log').val("");
+                $.ajax({
+                    type: "POST",
+                    url: "/Home/Index",
+                    async: true,//默认true异步，同步设置为false
+                    cache: true,//默认true缓存数据，设置为false不做缓存处理
+                    data: JSON.stringify({
+                        "url": $("#txt_url").val(),
+                        "minute": $("#cb_minute").val(),
+                        "isCancel": true
+                    }),
+                    contentType: "application/json",
+                    dataType: "json",
+                    success: function (data) {
+                        $('#txt_content').html("");
+                        for (var j = 0; j < data.length; j++) {
+                          
+                            var txt1 = "<div id='" + data[j].id + "'>" + data[j].name + "</div>";
+                            $('#txt_content').append(txt1);  
+                        }
+                        var str = $('#txt_log').val() + "共" + data.length + "个视视\n";//
+                        $('#txt_log').val(str);//
+                       
+                       
+
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        // alert(XMLHttpRequest.status);
+                        //alert(XMLHttpRequest.readyState);
+                        //alert(textStatus);
+                    },
+                    complete: function (XMLHttpRequest, textStatus) {
+                        this; // 调用本次AJAX请求时传递的options参数
+                    }
+                });
+            });
+
+            $("#btn_start").click(function () {
+              
+                $.ajax({
+                    type: "POST",
+                    url: "/Home/About",
+                    data: {
+                        "cancel": false
+                    },
+                    dataType: "json",
+                    success: function (data) {
+                       
+                        var str = $('#txt_log').val() + "开始下载\n";//
+                        $('#txt_log').val(str);//
+
+
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        // alert(XMLHttpRequest.status);
+                        //alert(XMLHttpRequest.readyState);
+                        //alert(textStatus);
+                    },
+                    complete: function (XMLHttpRequest, textStatus) {
+                        this; // 调用本次AJAX请求时传递的options参数
+                    }
+                });
+            });
+
+        });
+
+        //取消下载
+        function CancelDownload() {
+            $.ajax({
+                type: "POST",
+                url: "/Home/About",
+                data: {
+                    "cancel": true
+                },
+                dataType: "json",
+                success: function (data) {
+
+                    var str = $('#txt_log').val() + "取消下载\n";//
+                    $('#txt_log').val(str);//
+
+
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    // alert(XMLHttpRequest.status);
+                    //alert(XMLHttpRequest.readyState);
+                    //alert(textStatus);
+                },
+                complete: function (XMLHttpRequest, textStatus) {
+                    this; // 调用本次AJAX请求时传递的options参数
+                }
+            });
+
+        }
+    </script>
+    <script src="~/js/signalR.js"></script>
+    <script type="text/javascript">
+        //创建连接对象connection
+        var connection = new signalR.HubConnectionBuilder().withUrl("/chatHub").build();
+
+        //启动connection
+        connection.start()
+            .then(function () {
+                console.log("连接成功");
+            }).catch(function (ex) {
+                console.log("连接失败" + ex);
+                //SignalR JavaScript 客户端不会自动重新连接，必须编写代码将手动重新连接你的客户端
+                setTimeout(() => start(), 5000);
+            });
+
+        async function start() {
+            try {
+                await connection.start();
+                console.log("connected");
+            } catch (err) {
+                console.log(err);
+                setTimeout(() => start(), 5000);
+            }
+        };
+
+        connection.onclose(async () => {
+            start();
+        });
+
+
+        //绑定事件("ReceiveMessage"和服务器端的SendMessage方法中的第一个参数一致)
+        connection.on("ReceiveMessage", function (user, message) {
+            if (user == "ProgressChanged") {
+                var msg = message.split(':');
+                $('#' + msg[0]).html(msg[1]+"=>下载" + msg[2]);//
+            }
+            else {
+                var msg = message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                var str = $('#txt_log').val() + msg + "\n";//
+                $('#txt_log').val(str);//
+            }
+            
+        });
+
+        //发送消息
+        function btnSendMsg() {
+            connection.invoke("SendMessage", "wjh", "中华人民共和国").catch(function (err) {
+                return console.error(err.toString());
+            });
+          
+        }
+    </script>
+
+</head>
+<body>
+    <input id="btn_get" type="button" value="获取下载列表" />
+    <input id="txt_url" type="text" style="width:500px" />
+    下载时间(分钟)<select id="cb_minute"></select>
+    <input id="btn_start" type="button" value="开始下载" />
+    <input id="btn_cancel" type="button" value="取消下载" onclick="CancelDownload()" /><input id="Button1" type="button" value="button" onclick="btnSendMsg()" />
+    <br />
+    <br />
+    <textarea id="txt_log" rows="5" cols="200"></textarea>
+    <div id="txt_content">
+
+    </div>
+</body>
+</html>

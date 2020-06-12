@@ -1,0 +1,54 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="~/js/jquery-3.3.1.js"></script>
+   
+    <script src="~/js/signalR.js"></script>
+    <script type="text/javascript">
+        //创建连接对象connection
+        var connection = new signalR.HubConnectionBuilder().withUrl("/chatHub").build();
+
+        //启动connection
+        connection.start()
+            .then(function () {
+                console.log("连接成功");
+            }).catch(function (ex) {
+                console.log("连接失败" + ex);
+                //SignalR JavaScript 客户端不会自动重新连接，必须编写代码将手动重新连接你的客户端
+                setTimeout(() => start(), 5000);
+            });
+
+        async function start() {
+            try {
+                await connection.start();
+                console.log("connected");
+            } catch (err) {
+                console.log(err);
+                setTimeout(() => start(), 5000);
+            }
+        };
+
+        connection.onclose(async () => {
+            start();
+        });
+
+
+        //绑定事件("ReceiveMessage"和服务器端的SendMessage方法中的第一个参数一致)
+        connection.on("ReceiveMessage", function (user, message) {
+            var msg = message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            var str = $('#txt_log').val() + msg + "\n";//
+            $('#txt_log').val(str);//
+        });
+
+      
+    </script>
+
+</head>
+<body>
+
+    <textarea id="txt_log" rows="50" cols="200"></textarea>
+</body>
+</html>
